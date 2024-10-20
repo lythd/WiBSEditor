@@ -1,0 +1,7 @@
+.vscode/
+*.o
+*.stash
+Makefile
+moc_*
+qrc_resources.cpp
+wbsedit
