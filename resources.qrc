@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>themes/cherry.json</file>
+        <file>themes/dark.json</file>
+        <file>themes/developer.json</file>
+        <file>themes/midnightblue.json</file>
+        <file>themes/obsidian.json</file>
+        <file>themes/ocean.json</file>
+        <file>themes/sunset.json</file>
+        <file>themes/mint.json</file>
+        <file>themes/lavender.json</file>
+        <file>themes/sunrise.json</file>
+    </qresource>
+</RCC>
