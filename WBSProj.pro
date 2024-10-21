@@ -7,13 +7,17 @@ QT += widgets
 SOURCES += main.cpp \
            editorwindow.cpp \
            syntaxhighlighter.cpp \
-           tokenparser.cpp
+           tokenparser.cpp \
+           intermediatenode.cpp
 
 # Headers
 HEADERS += editorwindow.h \
            syntaxhighlighter.h \
            tokenparser.h \
-           binarytreehelper.hpp
+           intermediatenode.h \
+           binarytreehelper.hpp \
+           token.hpp \
+           notimplementedexception.hpp
 
 RESOURCES += resources.qrc
 

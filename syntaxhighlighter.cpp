@@ -44,7 +44,7 @@ void SyntaxHighlighter::highlightBlock(const QString &text) {
     // 3. Keyword Highlighting (Priority 3)
     QTextCharFormat keywordFormat;
     keywordFormat.setForeground(Qt::blue);
-    QStringList keywordPatterns = { "\\bconst\\b", "\\bcreate\\b", "\\bforeach\\b", "\\busing\\b", "\\bopen\\b" };
+    QStringList keywordPatterns = { "\\bconst\\b", "\\bcreate\\b", "\\bopen\\b", "\\bfile\\b", "\\bcolorset\\b", "\\bforeach\\b", "\\busing\\b", "\\bexport\\b", "\\in\\b", "\\as\\b", "\\do\\b" };
     for (const QString &pattern : keywordPatterns) {
         QRegExp expression(pattern);
         int index = expression.indexIn(text);
