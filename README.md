@@ -3,7 +3,7 @@ An editor for a Website Builder Script I made.
 
 ## Compiling
 ### Unix-like
-In the project directory run `qmake WBSProj.pro` and then `make`, this will generate the `wbsedit` executable. You will need `qt-base-6` installed.
+In the project directory run `qmake WBSProj.pro` and then `make`, this will generate the `wbsedit` executable. You will need `qt6-base` installed.
 ### Windows
 First regret your life choices, then run `qmake WBSProj.pro` and then use cmake to generate the executable. You will need qt v6 installed.
 
