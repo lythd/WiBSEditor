@@ -5,6 +5,8 @@ PURPOSE:
 #ifndef EDITORWINDOW_H
 #define EDITORWINDOW_H
 
+#include "editorwindow.h"
+#include "tokenparser.h"
 #include "syntaxhighlighter.h"
 #include <QMainWindow>
 #include <QTextEdit>
@@ -43,6 +45,9 @@ private:
     void saveFileAs();
     void run();
     void changeTheme();
+    #ifdef DEBUG
+    void previewCompilation();
+    #endif
     void loadTheme(const QString &themeFile);
     void saveSettings();
     void loadSettings();

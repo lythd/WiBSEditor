@@ -6,11 +6,14 @@ QT += widgets
 # Sources
 SOURCES += main.cpp \
            editorwindow.cpp \
-           syntaxhighlighter.cpp
+           syntaxhighlighter.cpp \
+           tokenparser.cpp
 
 # Headers
 HEADERS += editorwindow.h \
-           syntaxhighlighter.h
+           syntaxhighlighter.h \
+           tokenparser.h \
+           binarytreehelper.hpp
 
 RESOURCES += resources.qrc
 
