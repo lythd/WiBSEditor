@@ -15,13 +15,14 @@ class IntermediateNode {
 public:
     void generateTree(std::vector<std::tuple<std::string, uint32_t, uint32_t>> tokens);
     std::vector<SyntaxError> getErrors();
+    bool isComplete();
     void addSibling(IntermediateNode* node);
     void addChild(IntermediateNode* node);
     IntermediateNode * getParent();
-    IntermediateNode * getChild(uint index);
-    uint getNumberChildren();
+    IntermediateNode * getChild(uint32_t index);
+    uint32_t getNumberChildren();
 
-    IntermediateNode * operator[](uint index);
+    IntermediateNode * operator[](uint32_t index);
     ~IntermediateNode();
 
 private:
@@ -31,8 +32,8 @@ private:
     Token token = Token();
     bool hasParent = false;
 
-    IntermediateNode * getSibling(uint index);
-    uint getNumberYoungerSiblings();
+    IntermediateNode * getSibling(uint32_t index);
+    uint32_t getNumberYoungerSiblings();
 
     void destroy();
 };
