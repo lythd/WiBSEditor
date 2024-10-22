@@ -56,14 +56,14 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
             if (last->getParent() == nullptr ||
                     (last->getParent()->token.getType() != Token::TokenType::CONST &&
                     last->getParent()->token.getType() != Token::TokenType::ARGUMENT_LIST))
-                cToken = Token(Token::TokenType::BINARY_OPERATOR, "=",
+                cToken = Token(Token::TokenType::BINARY_OPERATOR, "=", // This does mean there is both a "=" and "==" binary operator that function the same, but if I were to make this == you wouldn't be able to explicitly type "==" for the binary equality
                         cToken.getLine(), cToken.getPos());
-            // Double equals will always be equality (and technically any higher number of equals in a row though that's undefined behavior)
+            // Double equals will always be equality
             if (last->getParent() != nullptr && last->getParent()->getNumberChildren() == 1 &&
                     (last->getParent()->token.getType() == Token::TokenType::BINARY_OPERATOR ||
                     last->getParent()->token.getType() == Token::TokenType::ASSIGNMENT) &&
                     last->getParent()->token.getValue() == "=") {
-                last->getParent()->token = Token(Token::TokenType::BINARY_OPERATOR, "=",
+                last->getParent()->token = Token(Token::TokenType::BINARY_OPERATOR, "==",
                         last->getParent()->token.getLine(), last->getParent()->token.getPos());
                 continue; // Just need to adjust and move on since it's not a new token
             }
