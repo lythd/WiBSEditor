@@ -7,12 +7,12 @@ PURPOSE:
 
 TokenParser::TokenParser() {}
 
-std::vector<std::string> TokenParser::parse(const std::string& text) {
+std::vector<std::tuple<std::string, uint32_t, uint32_t>> TokenParser::parse(const std::string& text) {
     tokenize(text);
     return tokens;
 }
 
-std::vector<std::string> TokenParser::getTokens() const {
+std::vector<std::tuple<std::string, uint32_t, uint32_t>> TokenParser::getTokens() const {
     return tokens;
 }
 
@@ -21,9 +21,14 @@ void TokenParser::tokenize(const std::string& text) {
     std::string currentToken;
     bool inString = false;
     bool inComment = false;
+    uint32_t line = 0, pos = 0;
     
     for (size_t i = 0; i < text.length(); ++i) {
         char currentChar = text[i];
+        if(currentChar == '\n') {
+            ++line;
+            pos = 0;
+        } else ++pos;
 
         // Check if we are inside a comment
         if (inComment) {
@@ -36,7 +41,7 @@ void TokenParser::tokenize(const std::string& text) {
             currentToken += currentChar;
             if (currentChar == '"') {
                 inString = false;
-                tokens.push_back(currentToken);
+                tokens.push_back(std::make_tuple(currentToken, line, pos));
                 currentToken.clear();
             }
             continue;
@@ -57,21 +62,21 @@ void TokenParser::tokenize(const std::string& text) {
             continue;
         }
 
-        // Check if the character is part of a word (letters, digits, underscore), the first is allowed to be a hashtag for color literals
-        if (std::isalnum(currentChar) || currentChar == '_' || (currentToken.empty() && currentChar == '#'))
+        // Check if the character is part of a word (letters, digits, underscore, period), the first is allowed to be a hashtag for color literals
+        if (std::isalnum(currentChar) || currentChar == '_' || currentChar == '.' || (currentToken.empty() && currentChar == '#'))
             currentToken += currentChar;
         else {
             // If we have a current token, push it to tokens
             if (!currentToken.empty()) {
-                tokens.push_back(currentToken);
+                tokens.push_back(std::make_tuple(currentToken, line, pos));
                 currentToken.clear(); // Reset current token
             }
 
             // If the character is not whitespace, add it as a standalone symbol token
-            if (!std::isspace(currentChar)) tokens.push_back(std::string(1, currentChar));
+            if (!std::isspace(currentChar)) tokens.push_back(std::make_tuple(std::string(1, currentChar), line, pos));
         }
     }
 
     // Add the last token if it exists
-    if (!currentToken.empty()) tokens.push_back(currentToken);
+    if (!currentToken.empty()) tokens.push_back(std::make_tuple(currentToken, line, pos));
 }

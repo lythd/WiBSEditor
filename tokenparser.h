@@ -7,15 +7,17 @@ PURPOSE:
 
 #include <vector>
 #include <string>
+#include <tuple>
+#include <cstdint>
 
 class TokenParser {
 public:
     TokenParser();
-    std::vector<std::string> parse(const std::string& text);
-    std::vector<std::string> getTokens() const;
+    std::vector<std::tuple<std::string, uint32_t, uint32_t>> parse(const std::string& text);
+    std::vector<std::tuple<std::string, uint32_t, uint32_t>> getTokens() const;
 
 private:
-    std::vector<std::string> tokens;
+    std::vector<std::tuple<std::string, uint32_t, uint32_t>> tokens;
     void tokenize(const std::string& text);
 };
 

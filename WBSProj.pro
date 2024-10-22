@@ -17,6 +17,7 @@ HEADERS += editorwindow.h \
            intermediatenode.h \
            binarytreehelper.hpp \
            token.hpp \
+           syntaxerror.hpp \
            notimplementedexception.hpp
 
 RESOURCES += resources.qrc

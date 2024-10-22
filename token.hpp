@@ -8,16 +8,20 @@ PURPOSE:
 
 #include "notimplementedexception.hpp"
 #include <string>
+#include <cstdint>
 
 class Token {
 public:
     /*
     Full Phrase Token Types (top-level phrases must be these):
-    - const keyword
+    - const
     - any value expression
 
     Value Expression Token Types:
-    - keyword (opening up a phrase) except const
+    - keyword (opening up a phrase)
+    - any pure value expression
+
+    Pure Value Expression Token Types (not really used):
     - name (constant/variable)
     - string literal
     - bool literal
@@ -30,6 +34,7 @@ public:
 
     All Phrases (phrases are anything with children):
     - any keyword
+    - const
     - assignment
     - any operator, the operator is the parent and the operand(s) the children
     - list literal, one of the two that can have any number of children, stores value expressions,
@@ -40,6 +45,8 @@ public:
 
     */
     enum class TokenType {
+        UNSET = 0,
+        CONST,
         KEYWORD,
         FILLER, // Just used during construction to ensure syntax, but ignored in execution
         NAME,
@@ -52,30 +59,102 @@ public:
         COLOR_LITERAL, // Hashtag are removed upon construction
         LIST_LITERAL,
         ARGUMENT_LIST,
-        UNARY_OPERATOR,
+        UNARY_OPERATOR, // All unary operators are prefix
         BINARY_OPERATOR,
         ASSIGNMENT,
         UNKNOWN
     };
 
-    Token(TokenType type, const std::string& value);
+    Token();
+    Token(Token &token);
+    Token(TokenType literalType, const std::string& value, const uint32_t& line,
+        const uint32_t& pos, bool first, bool inLink, bool inHtml, bool inArg);
+    Token(TokenType type, const std::string& value, const uint32_t& line,
+        const uint32_t& pos);
 
     TokenType getType() const;
     const std::string& getValue() const;
+    const uint32_t& getLine() const;
+    const uint32_t& getPos() const;
 
-    static uint getPhraseLength(Token kw);
-    static bool doesAcceptInPosition(Token kw, Token t, uint pos, bool final=false);
-    static bool Token::isValueExpression(Token t);
-    static bool Token::isFullPhrase(Token t);
-    static bool Token::isPhrase(Token t);
+    static uint32_t getPhraseLength(Token kw);
+    static bool doesAcceptInPosition(Token kw, Token t, uint32_t pos, bool final=false);
+    static bool isPureValueExpression(Token t);
+    static bool isValueExpression(Token t);
+    static bool isFullPhrase(Token t);
+    static bool isPhrase(Token t);
+    static TokenType getLiteral(std::string token, bool inLink=false);
 
 private:
     TokenType type;
     std::string value;
+    uint32_t line, pos;
 };
 
-inline Token::Token(TokenType type, const std::string& value) 
-    : type(type), value(value) {}
+inline Token::Token() 
+    : type(Token::TokenType::UNSET), value(""), line(0), pos(0) {}
+
+inline Token::Token(Token &token)
+    : type(token.type), value(token.value), line(token.line), pos(token.pos) {}
+
+// A more complete string -> token built on top of the more basic literal one later on
+inline Token::Token(TokenType literalType, const std::string& value, const uint32_t& line,
+        const uint32_t& pos, bool first, bool inLink, bool inHtml, bool inArg) {
+    type = literalType;
+    this->value = value;
+    this->line = line;
+    this->pos = pos;
+    switch (literalType) {
+    case Token::TokenType::STRING_LITERAL:
+        this->value = value.substr(1, value.size()-1);
+        break;
+    case Token::TokenType::COLOR_LITERAL:
+        this->value = value.substr(1);
+        break;
+    case Token::TokenType::UNKNOWN:
+        if (value.size() == 1) switch (value[0]) {
+        case '+':
+        case '-':
+            type = first ? Token::TokenType::UNARY_OPERATOR :
+                Token::TokenType::BINARY_OPERATOR;
+            break;
+        case '/':
+            type = (first && inLink) ? Token::TokenType::UNARY_OPERATOR :
+                Token::TokenType::BINARY_OPERATOR;
+            break;
+        case '*':
+        case '%':
+        case '&':
+        case '|':
+        case '^':
+            type = Token::TokenType::BINARY_OPERATOR;
+            break;
+        case '~':
+        case '!':
+            type = Token::TokenType::UNARY_OPERATOR;
+            break;
+        case '=':
+            type = Token::TokenType::ASSIGNMENT;
+            break;
+        case '[':
+            type = Token::TokenType::LIST_LITERAL;
+            break;
+        case '(':
+            type = inLink ? Token::TokenType::ARGUMENT_LIST :
+                Token::TokenType::UNARY_OPERATOR;
+            // brackets used for math can be treated as a unary operator that does nothing
+            break;
+        case ']':
+        case ')':
+            type = Token::TokenType::FILLER;
+            break;
+        }
+        break;
+    }
+}
+
+inline Token::Token(TokenType type, const std::string& value, const uint32_t& line, const uint32_t& pos) 
+    : type(type), value(value), line(line), pos(pos) {}
 
 inline Token::TokenType Token::getType() const {
     return type;
@@ -85,12 +164,18 @@ inline const std::string& Token::getValue() const {
     return value;
 }
 
-uint Token::getPhraseLength(Token kw) {
-    switch(kw.type) {
+inline const uint32_t& Token::getLine() const {
+    return line;
+}
+
+inline const uint32_t& Token::getPos() const {
+    return pos;
+}
+
+uint32_t Token::getPhraseLength(Token kw) {
+    switch (kw.type) {
     case Token::TokenType::KEYWORD:
-        switch(str2int(kw.value.c_str())) {
-        case str2int("const"):
-            return 1; // Const takes in an assigment
+        switch (str2int(kw.value.c_str())) {
         case str2int("create"):
             return 2; // Create takes in an htmlpart and argument list
         case str2int("open"):
@@ -116,8 +201,10 @@ uint Token::getPhraseLength(Token kw) {
         return 2;
     case Token::TokenType::UNARY_OPERATOR:
         return 1;
+    case Token::TokenType::CONST:
+        return 1;
     case Token::TokenType::ARGUMENT_LIST:
-        return -1;  // -1 (the uint max) represents variable length
+        return -1;  // -1 (the uint32_t max) represents variable length
     case Token::TokenType::LIST_LITERAL:
         return -1;
     default:
@@ -125,18 +212,12 @@ uint Token::getPhraseLength(Token kw) {
     }
 }
 
-bool Token::doesAcceptInPosition(Token kw, Token t, uint pos, bool final=false) {
+bool Token::doesAcceptInPosition(Token kw, Token t, uint32_t pos, bool final=false) {
     // Some stuff changes during construction, like assignments are built up with the name first,
                                 // so there is a difference between final and not
-    switch(kw.type) {
+    switch (kw.type) {
     case Token::TokenType::KEYWORD:
-        switch(str2int(kw.value.c_str())) {
-        case str2int("const"):
-            // Const takes in an assigment
-            if (pos != 0) return false;
-            if (t.type == Token::TokenType::ASSIGNMENT) return true;
-            if (t.type == Token::TokenType::NAME) return !final;
-            return false;
+        switch (str2int(kw.value.c_str())) {
         case str2int("create"):
             // Create takes in an htmlpart and argument list
             if (pos == 1) return t.type == Token::TokenType::ARGUMENT_LIST;
@@ -157,7 +238,7 @@ bool Token::doesAcceptInPosition(Token kw, Token t, uint pos, bool final=false) 
         case str2int("foreach"):
             // For each takes in a variable name, then a filler in word, then a value expression,
                                 // then a filler do keyword, then a full phrase
-            switch(pos) {
+            switch (pos) {
             case 0:
                 return t.type == Token::TokenType::NAME;
             case 1:
@@ -172,7 +253,7 @@ bool Token::doesAcceptInPosition(Token kw, Token t, uint pos, bool final=false) 
         case str2int("using"):
             // Using takes in a value expression, then a filler as word, then a variable name,
                                 // then a filler do keyword, then a full phrase
-            switch(pos) {
+            switch (pos) {
             case 0:
                 return isValueExpression(t);
             case 1:
@@ -198,6 +279,11 @@ bool Token::doesAcceptInPosition(Token kw, Token t, uint pos, bool final=false) 
         return isValueExpression(t) && (pos == 0 || pos == 1);
     case Token::TokenType::UNARY_OPERATOR:
         return isValueExpression(t) && pos == 0;
+    case Token::TokenType::CONST:
+        if (pos != 0) return false;
+        if (t.type == Token::TokenType::ASSIGNMENT) return true;
+        if (t.type == Token::TokenType::NAME) return !final;
+        return false;
     case Token::TokenType::ARGUMENT_LIST:
         if (t.type == Token::TokenType::ASSIGNMENT) return true;
         if (t.type == Token::TokenType::NAME) return !final;
@@ -211,10 +297,8 @@ bool Token::doesAcceptInPosition(Token kw, Token t, uint pos, bool final=false) 
     }
 }
 
-bool Token::isValueExpression(Token t) {
-    switch(t.type) {
-    case Token::TokenType::KEYWORD:
-        return t.value != "const";
+bool Token::isPureValueExpression(Token t) {
+    switch (t.type) {
     case Token::TokenType::NAME:
     case Token::TokenType::STRING_LITERAL:
     case Token::TokenType::BOOL_LITERAL:
@@ -230,12 +314,17 @@ bool Token::isValueExpression(Token t) {
     }
 }
 
+bool Token::isValueExpression(Token t) {
+    return isPureValueExpression(t) || (t.type == Token::TokenType::KEYWORD);
+}
+
 bool Token::isFullPhrase(Token t) {
-    return isValueExpression(t) || (t.type == Token::TokenType::KEYWORD && t.value == "const");
+    return isValueExpression(t) || (t.type == Token::TokenType::CONST);
 }
 
 bool Token::isPhrase(Token t) {
     switch(t.type) {
+    case Token::TokenType::CONST:
     case Token::TokenType::KEYWORD:
     case Token::TokenType::ASSIGNMENT:
     case Token::TokenType::ARGUMENT_LIST:
@@ -246,6 +335,63 @@ bool Token::isPhrase(Token t) {
     default:
         return false;
     }
+}
+
+// Not full type resolution! Just the following:
+// Const, StringLiteral, BoolLiteral, ThisLiteral, ColorLiteral,
+// NumericLiteral, Keyword, Filler words, Name (possibly), or Unknown
+// If expecting a file literal it will include .'s and give
+// FileLiteral instead of Name, but it won't do that elsewise
+Token::TokenType Token::getLiteral(std::string token, bool inLink=false) {
+    if (token.front() == '"' && token.back() == '"')
+        return Token::TokenType::STRING_LITERAL;
+    switch (str2int(token.c_str())) {
+    case str2int("true"):
+    case str2int("false"):
+        return Token::TokenType::BOOL_LITERAL;
+    case str2int("this"):
+        return Token::TokenType::THIS_LITERAL;
+    case str2int("const"):
+        return Token::TokenType::CONST;
+    case str2int("create"):
+    case str2int("open"):
+    case str2int("file"):
+    case str2int("colorset"):
+    case str2int("foreach"):
+    case str2int("using"):
+    case str2int("export"):
+        return Token::TokenType::KEYWORD;
+    case str2int("as"):
+    case str2int("in"):
+    case str2int("do"):
+    case str2int(","):
+        return Token::TokenType::FILLER;
+    };
+
+    bool alphanumeric = true, numeric = true, hex = true, first = true;
+    const bool hashtag = token.front() == '#';
+    for (char c : token) {
+        if(first && hashtag) {
+            first = false;
+            continue;
+        }
+        // Numbers can be made of 0-9, .
+        if (!isdigit(c) && c != '.')
+            numeric = false;
+        // Hex can be made of 0-9, a-f, A-F
+        if (!isxdigit(c))
+            hex = false;
+        // Words can be made of 0-9, a-z, A-Z, _, inLink: .
+        if (!isalnum(c) && c != '_' && (!inLink || c != '.'))
+            alphanumeric = false; 
+    }
+    if (hashtag)
+        return hex ? Token::TokenType::COLOR_LITERAL : Token::TokenType::UNKNOWN;
+    if (numeric)
+        return Token::TokenType::NUMERIC_LITERAL;
+    if (alphanumeric)
+        return inLink ? Token::TokenType::FILE_LITERAL : Token::TokenType::NAME;
+    return Token::TokenType::UNKNOWN;
 }
 
 // From https://stackoverflow.com/questions/16388510/evaluate-a-string-with-a-switch-in-c
