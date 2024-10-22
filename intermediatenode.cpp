@@ -94,6 +94,8 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
     }
 }
 
+// Goes through the tree and compiles a list of errors so that the editor window can
+// squiggle and so that it can be displayed as a list of text in a popup.
 std::vector<SyntaxError> getErrors() {
 
 }
