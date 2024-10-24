@@ -2,6 +2,7 @@
 PURPOSE:
 - Highlights text based on WBS syntax
 */
+#include "defines.h"
 #include "syntaxhighlighter.h"
 #include <QRegExp>
 
@@ -44,7 +45,11 @@ void SyntaxHighlighter::highlightBlock(const QString &text) {
     // 3. Keyword Highlighting (Priority 3)
     QTextCharFormat keywordFormat;
     keywordFormat.setForeground(Qt::blue);
+    #ifdef Ver0_1_0
     QStringList keywordPatterns = { "\\bconst\\b", "\\bcreate\\b", "\\bopen\\b", "\\bfile\\b", "\\bcolorset\\b", "\\bforeach\\b", "\\busing\\b", "\\bexport\\b", "\\boutput\\b", "\\bin\\b", "\\bas\\b", "\\bdo\\b", "\\bxor\\b", "\\band\\b", "\\bor\\b", "\\bnot\\b" };
+    #else
+    QStringList keywordPatterns = { "\\bconst\\b", "\\bcreate\\b", "\\bopen\\b", "\\bfile\\b", "\\bcolorset\\b", "\\bforeach\\b", "\\busing\\b", "\\bexport\\b", "\\boutput\\b", "\\bin\\b", "\\bas\\b", "\\bdo\\b", "\\bxor\\b", "\\band\\b", "\\bor\\b", "\\bnot\\b" };
+    #endif
     for (const QString &pattern : keywordPatterns) {
         QRegExp expression(pattern);
         int index = expression.indexIn(text);

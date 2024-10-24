@@ -6,6 +6,7 @@ PURPOSE:
 #ifndef TOKEN_HPP
 #define TOKEN_HPP
 
+#include "defines.h"
 #include "notimplementedexception.hpp"
 #include <string>
 #include <cstdint>
@@ -211,7 +212,9 @@ uint32_t Token::getPhraseLength(Token kw) {
             return 5; // Using takes in a value expression, then a filler as word, then a variable name,
                                 // then a filler do keyword, then a full phrase
         case str2int("export"):
+        #ifdef Ver0_1_0
         case str2int("output"):
+        #endif
             return 1; // Export & Output takes in a value expression
         default:
             return 0;
@@ -285,7 +288,9 @@ bool Token::doesAcceptInPosition(Token kw, Token t, uint32_t pos, bool final=fal
                 return isFullPhrase(t);
             }
         case str2int("export"):
+        #ifdef Ver0_1_0
         case str2int("output"):
+        #endif
             // Export & Output takes in a value expression
             return isValueExpression(t) && pos == 0;
         default:
@@ -385,7 +390,9 @@ Token::TokenType Token::getLiteral(std::string token, bool inLink=false) {
     case str2int("foreach"):
     case str2int("using"):
     case str2int("export"):
+    #ifdef Ver0_1_0
     case str2int("output"):
+    #endif
         return Token::TokenType::KEYWORD;
     case str2int("as"):
     case str2int("in"):
