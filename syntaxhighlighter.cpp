@@ -2,7 +2,6 @@
 PURPOSE:
 - Highlights text based on WBS syntax
 */
-#include "defines.h"
 #include "syntaxhighlighter.h"
 #include <QRegExp>
 

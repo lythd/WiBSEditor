@@ -40,7 +40,7 @@ private:
 
 #endif // SYNTAXERROR_HPP
 
-void SyntaxError::printMessage(std::ostream& os) {
+inline void SyntaxError::printMessage(std::ostream& os) {
     os << "Error: ";
     switch(type) {
     case SyntaxError::SyntaxErrorType::IncompletePhrase:

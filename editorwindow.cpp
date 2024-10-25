@@ -2,13 +2,7 @@
 PURPOSE:
 - Manages the graphical interface of the window
 */
-#define DEBUG // Allows debug features: view the token tree
-//#define DEBUG_DRAWLINES // Not currently working, draws lines in the tree view in debug
-
 #include "editorwindow.h"
-#include "tokenparser.h"
-#include "syntaxhighlighter.h"
-#include "binarytreehelper.hpp"
 #include <QApplication>
 #include <QPainter>
 #include <QGridLayout>
@@ -253,7 +247,7 @@ void EditorWindow::previewCompilation() {
         #endif
 
         QSize sizeHint() const override {
-            return label->sizeHint()*5;
+            return label->sizeHint();
         }
 
     private:
@@ -265,10 +259,15 @@ void EditorWindow::previewCompilation() {
 
     // Parse
     TokenParser parser;
-    std::vector<std::string> tokens = parser.parse(textEdit->toPlainText().toStdString());
+    auto toks = parser.parse(textEdit->toPlainText().toStdString());
+    IntermediateNode *inter = new IntermediateNode();
+    inter->generateTree(toks);
+    while (inter->getParent() != nullptr) inter = inter->getParent();
+    std::vector<std::string> tokens;
+    inter->getAsVector(tokens);
 
     // Create a popup window
-    QDialog *popup = new QDialog(this);
+    QDialog *popup = new QDialog(nullptr);
     popup->setWindowTitle("Binary Tree Representation of Tokens");
     QGridLayout *layout = new QGridLayout(popup);
 

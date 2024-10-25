@@ -4,6 +4,7 @@ PURPOSE:
 */
 #include "intermediatenode.h"
 #include <cstdint>
+#include <math.h>
 
 void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t, uint32_t>> tokens) {
     if (token.getType() != Token::TokenType::UNSET) destroy();
@@ -29,9 +30,13 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
                     last->getParent()->token.getValue() == "file"))))
                 inLink = true;
             if (Token::getPhraseLength(last->token) > last->getNumberChildren())
-                first = last->getNumberChildren() > 0;
+                first = last->token.getType() == Token::TokenType::BINARY_OPERATOR ||
+                        last->getNumberChildren() > 0;
+                // Because binary operators are not in order it should always consider it to be first
             else if (last->getParent() != nullptr)
-                first = Token::getPhraseLength(last->getParent()->token) <= last->getParent()->getNumberChildren();
+                first = last->getParent()->token.getType() == Token::TokenType::BINARY_OPERATOR ||
+                        Token::getPhraseLength(last->getParent()->token) <= last->getParent()->getNumberChildren();
+                // Because binary operators are not in order it should always consider it to be first
             if (last->token.getType() == Token::TokenType::KEYWORD &&
                     last->token.getValue() == "create")
                 inHtml = true;
@@ -80,29 +85,33 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
             }
             // Can also merge with '!' and '~'
             if (last->token.getType() == Token::TokenType::UNARY_OPERATOR) {
-                if (last->token.getValue() == "!")
+                if (last->token.getValue() == "!" || last->token.getValue() == "not")
                     last->token = Token(Token::TokenType::BINARY_OPERATOR, "≠",
                             last->token.getLine(), last->token.getPos());
-                if (last->token.getValue() == "~")
+                else if (last->token.getValue() == "~")
                     last->token = Token(Token::TokenType::BINARY_OPERATOR, "≈",
                             last->token.getLine(), last->token.getPos());
-                // Since as a unary operator it would have started its own phrase and left like the LHS of this expression we need to merge
-                if (lastlast != nullptr) {
-                    if (lastlast->previous != nullptr) {
-                        if (lastlast->hasParent) lastlast->previous->firstChild = last;
-                        else lastlast->previous->nextSibling = last;
-                    } if (lastlast->nextSibling != nullptr) lastlast->nextSibling->previous = last;
-                    last->hasParent = lastlast->hasParent;
-                    last->previous = lastlast->previous;
-                    last->firstChild = lastlast;
-                    last->nextSibling = lastlast->nextSibling;
-                    lastlast->hasParent = true;
-                    lastlast->previous = last;
-                    lastlast->nextSibling = nullptr;
-                    last = lastlast; // These two lines just swap last and lastlast
-                    lastlast = last->previous;
+                // If either of the above ran:
+                if (last->token.getType() == Token::TokenType::BINARY_OPERATOR) {
+                    // Since as a unary operator it would have started its own phrase and left like the LHS of this expression we need to merge
+                    if (lastlast != nullptr) {
+                        if (lastlast->previous != nullptr) {
+                            if (lastlast->hasParent) lastlast->previous->firstChild = last;
+                            else lastlast->previous->nextSibling = last;
+                        } if (lastlast->nextSibling != nullptr && lastlast->nextSibling != last)
+                            lastlast->nextSibling->previous = last;
+                        last->hasParent = lastlast->hasParent;
+                        last->previous = lastlast->previous;
+                        last->firstChild = lastlast;
+                        last->nextSibling = lastlast->nextSibling == last ? nullptr : lastlast->nextSibling;
+                        lastlast->hasParent = true;
+                        lastlast->previous = last;
+                        lastlast->nextSibling = nullptr;
+                        last = lastlast; // These two lines just swap last and lastlast
+                        lastlast = last->previous;
                     }
-                continue; // Just need to adjust and move on since it's not a new token
+                    continue; // Just need to adjust and move on since it's not a new token
+                }
             }
 
             // Need to replace last node and then have it as a child
@@ -176,7 +185,7 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
 
         // Unary Operators, only the unary '/' (only meant to be used for starting a file literal)
                 // and the unary '(' since it might be an argument list '(' are special
-        if (cToken.getType() == Token::TokenType::UNARY_OPERATOR)
+        if (cToken.getType() == Token::TokenType::UNARY_OPERATOR) {
             // A unary '/' just makes a blank file literal, allowing you to make one at any point if you so wanted, though again it is just a string its not typed
                     // just has some extra features in that you can be warned if it's not found, and it can be placed in subdirectories and still be found
             if (cToken.getValue() == "/")
@@ -205,6 +214,7 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
                     cToken = Token(Token::TokenType::ARGUMENT_LIST, cToken.getValue(), cToken.getLine(), cToken.getPos());
                 }
             }
+        }
 
         // File literals, only thing special is to merge with previous ones if there are any
         else if (cToken.getType() == Token::TokenType::FILE_LITERAL) {
@@ -219,7 +229,7 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
         }
 
         // Filler, closing brackets are special, remember we don't know which type of ')' we have (either unary or argument list, the binary one doesn't need closing cause its paired with argument list)
-        else if (cToken.getType() == Token::TokenType::FILE_LITERAL) {
+        else if (cToken.getType() == Token::TokenType::FILLER) {
             std::string match = "";
             if (cToken.getValue() == ")") match = "(";
             else if (cToken.getValue() == "]") match = "[";
@@ -250,7 +260,7 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
         // Add as child as last if it needs and can be added, if not keep going to the parent up
         IntermediateNode *lastp = last;
         while (lastp != nullptr) {
-            if (!lastp->isComplete() && Token::doesAcceptInPosition(lastp->token, cToken, lastp->getNumberChildren())) {
+            if (!lastp->isComplete() && Token::doesAcceptInPosition(lastp->token, cToken, lastp->getNumberChildren(), false)) {
                 // Make and add as a child
                 IntermediateNode *node = new IntermediateNode();
                 node->token = cToken;
@@ -286,7 +296,7 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
 // Goes through the tree and compiles a list of errors so that the editor window can
 // squiggle and so that it can be displayed as a list of text in a popup.
 std::vector<SyntaxError> getErrors() {
-
+    throw NotImplementedException();
 }
 
 bool IntermediateNode::isComplete() {
@@ -365,6 +375,92 @@ uint32_t IntermediateNode::getNumberYoungerSiblings() {
     if (nextSibling == nullptr) return 0;
     return 1 + nextSibling->getNumberYoungerSiblings();
 }
+
+uint32_t IntermediateNode::getNumberTotal() {
+    uint32_t num = 1;
+    if (firstChild != nullptr) num += firstChild->getNumberTotal();
+    if (nextSibling != nullptr) num += nextSibling->getNumberTotal();
+    return num;
+}
+
+#ifdef DEBUG
+void IntermediateNode::getAsVector(std::vector<std::string> &vec) {
+    // Add string for this one
+    std::string str;
+    switch (token.getType()) {
+        case Token::TokenType::CONST:
+            str = "c: ";
+            break;
+        case Token::TokenType::KEYWORD:
+            str = "kw: ";
+            break;
+        case Token::TokenType::FILLER:
+            str = "f: ";
+            break;
+        case Token::TokenType::NAME:
+            str = "n: ";
+            break;
+        case Token::TokenType::HTMLPART:
+            str = "html: ";
+            break;
+        case Token::TokenType::STRING_LITERAL:
+            str = "\"\": ";
+            break;
+        case Token::TokenType::BOOL_LITERAL:
+            str = "b: ";
+            break;
+        case Token::TokenType::NUMERIC_LITERAL:
+            str = "num: ";
+            break;
+        case Token::TokenType::THIS_LITERAL:
+            str = "t: ";
+            break;
+        case Token::TokenType::FILE_LITERAL:
+            str = "/: ";
+            break;
+        case Token::TokenType::COLOR_LITERAL:
+            str = "#: ";
+            break;
+        case Token::TokenType::LIST_LITERAL:
+            str = "l: ";
+            break;
+        case Token::TokenType::ARGUMENT_LIST:
+            str = "al: ";
+            break;
+        case Token::TokenType::UNARY_OPERATOR:
+            str = "1: ";
+            break;
+        case Token::TokenType::BINARY_OPERATOR:
+            str = "2: ";
+            break;
+        case Token::TokenType::ASSIGNMENT:
+            str = "=: ";
+            break;
+        default:
+            str = "?: ";
+            break;
+    }
+    str += token.getValue();
+    str += " (" + std::to_string(getNumberChildren()) + ")";
+    vec.push_back(str);
+
+    // Get binary tree children vectors
+    std::vector<std::string> vecLeft;
+    std::vector<std::string> vecRight;
+    if (firstChild != nullptr) firstChild->getAsVector(vecLeft);
+    if (nextSibling != nullptr) nextSibling->getAsVector(vecRight);
+
+    // Merge them together into the main vector filling in blanks to preserve order
+    uint32_t vls = vecLeft.size(), vrs = vecRight.size();
+    uint32_t max = vls > vrs ? vls : vrs;
+    for (size_t i = 0; pow(2, i) <= max; ++i) {
+        for (size_t j = pow(2, i)-1; j < pow(2, i+1)-1; ++j)
+            vec.push_back(j < vls ? vecLeft[j] : "");
+        for (size_t j = pow(2, i)-1; j < pow(2, i+1)-1; ++j)
+            vec.push_back(j < vrs ? vecRight[j] : "");
+    }
+}
+#endif
 
 // Just calls getChild(), look there for details
 IntermediateNode * IntermediateNode::operator[](int32_t index) {

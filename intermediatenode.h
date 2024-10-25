@@ -5,6 +5,7 @@ PURPOSE:
 #ifndef INTERMEDIATENODE_HPP
 #define INTERMEDIATENODE_HPP
 
+#include "defines.h"
 #include "syntaxerror.hpp"
 #include "token.hpp"
 #include <vector>
@@ -22,6 +23,10 @@ public:
     // Negative indices the size gets added, gives nullptr for anything too negative or too positive that it exceeds
     IntermediateNode * getChild(int32_t index);
     uint32_t getNumberChildren();
+    uint32_t getNumberTotal();
+    #ifdef DEBUG
+    void getAsVector(std::vector<std::string> &vec);
+    #endif
 
     // Just calls getChild(), look there for details
     IntermediateNode * operator[](int32_t index);
