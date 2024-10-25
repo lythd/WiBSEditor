@@ -19,10 +19,12 @@ public:
     void addSibling(IntermediateNode* node);
     void addChild(IntermediateNode* node);
     IntermediateNode * getParent();
-    IntermediateNode * getChild(uint32_t index);
+    // Negative indices the size gets added, gives nullptr for anything too negative or too positive that it exceeds
+    IntermediateNode * getChild(int32_t index);
     uint32_t getNumberChildren();
 
-    IntermediateNode * operator[](uint32_t index);
+    // Just calls getChild(), look there for details
+    IntermediateNode * operator[](int32_t index);
     ~IntermediateNode();
 
 private:
@@ -30,11 +32,19 @@ private:
     IntermediateNode *nextSibling = nullptr;
     IntermediateNode *previous = nullptr;
     Token token = Token();
+    // This is whether previous is a parent (as opposed to an older sibling or nullptr), not whether it has a parent at all,
+            // that can be checked by comparing getParent() to nullptr
     bool hasParent = false;
 
-    IntermediateNode * getSibling(uint32_t index);
+    // Its only purpose was to complete the getChild implementation
+    // Gets sibling with relative index
+    // Returns nullptr for negatives or if the index is too high
+    IntermediateNode * getSibling(int32_t index);
     uint32_t getNumberYoungerSiblings();
 
+    // Dangerous since it can leave stranded bits of the tree
+    void disconnect();
+    // Deletes younger siblings and children too to prevent fragmentation and also because you often want to do that
     void destroy();
 };
 

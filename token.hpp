@@ -107,67 +107,67 @@ inline Token::Token(TokenType literalType, const std::string& value, const uint3
     this->line = line;
     this->pos = pos;
     switch (literalType) {
-    case Token::TokenType::NAME:
-        if(inHtml) type = Token::TokenType::HTMLPART;
-        break;
-    case Token::TokenType::STRING_LITERAL:
-        this->value = value.substr(1, value.size()-1);
-        break;
-    case Token::TokenType::COLOR_LITERAL:
-        this->value = value.substr(1);
-        break;
-    case Token::TokenType::UNKNOWN:
-        if (value.size() == 1) switch (value[0]) {
-        case '+':
-        case '-':
-            type = first ? Token::TokenType::UNARY_OPERATOR :
-                Token::TokenType::BINARY_OPERATOR;
+        case Token::TokenType::NAME:
+            if(inHtml) type = Token::TokenType::HTMLPART;
             break;
-        case '/':
-            type = (first && inLink) ? Token::TokenType::UNARY_OPERATOR :
-                Token::TokenType::BINARY_OPERATOR;
+        case Token::TokenType::STRING_LITERAL:
+            this->value = value.substr(1, value.size()-1);
             break;
-        case '*':
-        case '%':
-        case '&':
-        case '|':
-        case '^':
-        case '≥':
-        case '≤':
-        case '≠':
-        case '≈':
-            type = Token::TokenType::BINARY_OPERATOR;
+        case Token::TokenType::COLOR_LITERAL:
+            this->value = value.substr(1);
             break;
-        case '!':
-            this->value = "not";
-        case '~':
-            type = Token::TokenType::UNARY_OPERATOR;
+        case Token::TokenType::UNKNOWN:
+            if (value.size() == 1) switch (value[0]) {
+                case '+':
+                case '-':
+                    type = first ? Token::TokenType::UNARY_OPERATOR :
+                        Token::TokenType::BINARY_OPERATOR;
+                    break;
+                case '/':
+                    type = (first && inLink) ? Token::TokenType::UNARY_OPERATOR :
+                        Token::TokenType::BINARY_OPERATOR;
+                    break;
+                case '*':
+                case '%':
+                case '&':
+                case '|':
+                case '^':
+                case '≥':
+                case '≤':
+                case '≠':
+                case '≈':
+                    type = Token::TokenType::BINARY_OPERATOR;
+                    break;
+                case '!':
+                    this->value = "not";
+                case '~':
+                    type = Token::TokenType::UNARY_OPERATOR;
+                    break;
+                case str2int("xor"):
+                case str2int("and"):
+                case str2int("or"):
+                    type = Token::TokenType::BINARY_OPERATOR;
+                    break;
+                case str2int("not"):
+                    type = Token::TokenType::UNARY_OPERATOR;
+                    break;
+                case '=':
+                    type = Token::TokenType::ASSIGNMENT;
+                    break;
+                case '[':
+                    type = Token::TokenType::LIST_LITERAL;
+                    break;
+                case '(':
+                    type = Token::TokenType::UNARY_OPERATOR;
+                    // brackets used for math can be treated as a unary operator that does nothing,
+                    // argument lists aren't detected here
+                    break;
+                case ']':
+                case ')':
+                    type = Token::TokenType::FILLER;
+                    break;
+                }
             break;
-        case str2int("xor"):
-        case str2int("and"):
-        case str2int("or"):
-            type = Token::TokenType::BINARY_OPERATOR;
-            break;
-        case str2int("not"):
-            type = Token::TokenType::UNARY_OPERATOR;
-            break;
-        case '=':
-            type = Token::TokenType::ASSIGNMENT;
-            break;
-        case '[':
-            type = Token::TokenType::LIST_LITERAL;
-            break;
-        case '(':
-            type = Token::TokenType::UNARY_OPERATOR;
-            // brackets used for math can be treated as a unary operator that does nothing,
-            // argument lists aren't detected here
-            break;
-        case ']':
-        case ')':
-            type = Token::TokenType::FILLER;
-            break;
-        }
-        break;
     }
 }
 
@@ -196,43 +196,43 @@ inline const uint32_t& Token::getPos() const {
 
 uint32_t Token::getPhraseLength(Token kw) {
     switch (kw.type) {
-    case Token::TokenType::KEYWORD:
-        switch (str2int(kw.value.c_str())) {
-        case str2int("create"):
-            return 1; // Create takes in an htmlpart or binary '('
-        case str2int("open"):
-        case str2int("file"):
-            return 1; // Open & File takes in a file literal
-        case str2int("colorset"):
-            return 3; // Color set takes in 3 assignments
-        case str2int("foreach"):
-            return 5; // For each takes in a variable name, then a filler in word, then a value expression,
-                                // then a filler do keyword, then a full phrase
-        case str2int("using"):
-            return 5; // Using takes in a value expression, then a filler as word, then a variable name,
-                                // then a filler do keyword, then a full phrase
-        case str2int("export"):
-        #ifdef Ver0_1_0
-        case str2int("output"):
-        #endif
-            return 1; // Export & Output takes in a value expression
+        case Token::TokenType::KEYWORD:
+            switch (str2int(kw.value.c_str())) {
+                case str2int("create"):
+                    return 1; // Create takes in an htmlpart or binary '('
+                case str2int("open"):
+                case str2int("file"):
+                    return 1; // Open & File takes in a file literal
+                case str2int("colorset"):
+                    return 3; // Color set takes in 3 assignments
+                case str2int("foreach"):
+                    return 5; // For each takes in a variable name, then a filler in word, then a value expression,
+                                        // then a filler do keyword, then a full phrase
+                case str2int("using"):
+                    return 5; // Using takes in a value expression, then a filler as word, then a variable name,
+                                        // then a filler do keyword, then a full phrase
+                case str2int("export"):
+                #ifdef Ver0_1_0
+                case str2int("output"):
+                #endif
+                    return 1; // Export & Output takes in a value expression
+                default:
+                    return 0;
+            }
+        case Token::TokenType::ASSIGNMENT:
+            return 2;
+        case Token::TokenType::BINARY_OPERATOR:
+            return 2;
+        case Token::TokenType::UNARY_OPERATOR:
+            return 1;
+        case Token::TokenType::CONST:
+            return 1;
+        case Token::TokenType::ARGUMENT_LIST:
+            return -1;  // -1 (the uint32_t max) represents variable length
+        case Token::TokenType::LIST_LITERAL:
+            return -1;
         default:
             return 0;
-        }
-    case Token::TokenType::ASSIGNMENT:
-        return 2;
-    case Token::TokenType::BINARY_OPERATOR:
-        return 2;
-    case Token::TokenType::UNARY_OPERATOR:
-        return 1;
-    case Token::TokenType::CONST:
-        return 1;
-    case Token::TokenType::ARGUMENT_LIST:
-        return -1;  // -1 (the uint32_t max) represents variable length
-    case Token::TokenType::LIST_LITERAL:
-        return -1;
-    default:
-        return 0;
     }
 }
 
@@ -241,106 +241,106 @@ bool Token::doesAcceptInPosition(Token kw, Token t, uint32_t pos, bool final=fal
                                 // so there is a difference between final and not
     switch (kw.type) {
     case Token::TokenType::KEYWORD:
-        switch (str2int(kw.value.c_str())) {
-        case str2int("create"):
-            // Create takes in an htmlpart or binary '('
-            if (pos == 0) return t.type == Token::TokenType::HTMLPART ||
-                (t.type == Token::TokenType::BINARY_OPERATOR && t.value == "(");
+            switch (str2int(kw.value.c_str())) {
+                case str2int("create"):
+                    // Create takes in an htmlpart or binary '('
+                    if (pos == 0) return t.type == Token::TokenType::HTMLPART ||
+                        (t.type == Token::TokenType::BINARY_OPERATOR && t.value == "(");
+                    return false;
+                case str2int("open"):
+                case str2int("file"):
+                    // Open & File takes in a file literal
+                    return t.type == Token::TokenType::FILE_LITERAL && pos == 0;
+                case str2int("colorset"):
+                    // Color set takes in 3 assignments
+                    if (pos < 0 || pos > 2) return false;
+                    if (t.type == Token::TokenType::ASSIGNMENT) return true;
+                    if (t.type == Token::TokenType::NAME) return !final;
+                    return false;
+                case str2int("foreach"):
+                    // For each takes in a variable name, then a filler in word, then a value expression,
+                                        // then a filler do keyword, then a full phrase
+                    switch (pos) {
+                    case 0:
+                        return t.type == Token::TokenType::NAME;
+                    case 1:
+                        return t.type == Token::TokenType::FILLER && t.value == "in";
+                    case 2:
+                        return isValueExpression(t);
+                    case 3:
+                        return t.type == Token::TokenType::FILLER && t.value == "do";
+                    case 4:
+                        return isFullPhrase(t);
+                    }
+                case str2int("using"):
+                    // Using takes in a value expression, then a filler as word, then a variable name,
+                                        // then a filler do keyword, then a full phrase
+                    switch (pos) {
+                    case 0:
+                        return isValueExpression(t);
+                    case 1:
+                        return t.type == Token::TokenType::FILLER && t.value == "as";
+                    case 2:
+                        return t.type == Token::TokenType::NAME;
+                    case 3:
+                        return t.type == Token::TokenType::FILLER && t.value == "do";
+                    case 4:
+                        return isFullPhrase(t);
+                    }
+                case str2int("export"):
+                #ifdef Ver0_1_0
+                case str2int("output"):
+                #endif
+                    // Export & Output takes in a value expression
+                    return isValueExpression(t) && pos == 0;
+                default:
+                    return 0;
+            }
+        case Token::TokenType::ASSIGNMENT:
+            if (pos == 1) return isValueExpression(t);
+            if (pos == 0) return t.type == Token::TokenType::NAME;
             return false;
-        case str2int("open"):
-        case str2int("file"):
-            // Open & File takes in a file literal
-            return t.type == Token::TokenType::FILE_LITERAL && pos == 0;
-        case str2int("colorset"):
-            // Color set takes in 3 assignments
-            if (pos < 0 || pos > 2) return false;
+        case Token::TokenType::BINARY_OPERATOR:
+            if (kw.value == "(") {
+                if (pos == 1) return t.type == Token::TokenType::ARGUMENT_LIST;
+                if (pos == 0) return isValueExpression(t) || t.type == Token::TokenType::HTMLPART;
+                return false;
+            }
+            return isValueExpression(t) && (pos == 0 || pos == 1);
+        case Token::TokenType::UNARY_OPERATOR:
+            return isValueExpression(t) && pos == 0;
+        case Token::TokenType::CONST:
+            if (pos != 0) return false;
             if (t.type == Token::TokenType::ASSIGNMENT) return true;
             if (t.type == Token::TokenType::NAME) return !final;
             return false;
-        case str2int("foreach"):
-            // For each takes in a variable name, then a filler in word, then a value expression,
-                                // then a filler do keyword, then a full phrase
-            switch (pos) {
-            case 0:
-                return t.type == Token::TokenType::NAME;
-            case 1:
-                return t.type == Token::TokenType::FILLER && t.value == "in";
-            case 2:
-                return isValueExpression(t);
-            case 3:
-                return t.type == Token::TokenType::FILLER && t.value == "do";
-            case 4:
-                return isFullPhrase(t);
-            }
-        case str2int("using"):
-            // Using takes in a value expression, then a filler as word, then a variable name,
-                                // then a filler do keyword, then a full phrase
-            switch (pos) {
-            case 0:
-                return isValueExpression(t);
-            case 1:
-                return t.type == Token::TokenType::FILLER && t.value == "as";
-            case 2:
-                return t.type == Token::TokenType::NAME;
-            case 3:
-                return t.type == Token::TokenType::FILLER && t.value == "do";
-            case 4:
-                return isFullPhrase(t);
-            }
-        case str2int("export"):
-        #ifdef Ver0_1_0
-        case str2int("output"):
-        #endif
-            // Export & Output takes in a value expression
-            return isValueExpression(t) && pos == 0;
+        case Token::TokenType::ARGUMENT_LIST:
+            if (t.type == Token::TokenType::ASSIGNMENT) return true;
+            if (t.type == Token::TokenType::NAME) return !final;
+            if (t.type == Token::TokenType::FILLER) return t.value == ",";
+        case Token::TokenType::LIST_LITERAL:
+            if (isValueExpression(t)) return true;
+            if (t.type == Token::TokenType::NAME) return !final;
+            if (t.type == Token::TokenType::FILLER) return t.value == ",";
         default:
-            return 0;
-        }
-    case Token::TokenType::ASSIGNMENT:
-        if (pos == 1) return isValueExpression(t);
-        if (pos == 0) return t.type == Token::TokenType::NAME;
-        return false;
-    case Token::TokenType::BINARY_OPERATOR:
-        if (kw.value == "(") {
-            if (pos == 1) return t.type == Token::TokenType::ARGUMENT_LIST;
-            if (pos == 0) return isValueExpression(t) || t.type == Token::TokenType::HTMLPART;
             return false;
-        }
-        return isValueExpression(t) && (pos == 0 || pos == 1);
-    case Token::TokenType::UNARY_OPERATOR:
-        return isValueExpression(t) && pos == 0;
-    case Token::TokenType::CONST:
-        if (pos != 0) return false;
-        if (t.type == Token::TokenType::ASSIGNMENT) return true;
-        if (t.type == Token::TokenType::NAME) return !final;
-        return false;
-    case Token::TokenType::ARGUMENT_LIST:
-        if (t.type == Token::TokenType::ASSIGNMENT) return true;
-        if (t.type == Token::TokenType::NAME) return !final;
-        if (t.type == Token::TokenType::FILLER) return t.value == ",";
-    case Token::TokenType::LIST_LITERAL:
-        if (isValueExpression(t)) return true;
-        if (t.type == Token::TokenType::NAME) return !final;
-        if (t.type == Token::TokenType::FILLER) return t.value == ",";
-    default:
-        return false;
     }
 }
 
 bool Token::isPureValueExpression(Token t) {
     switch (t.type) {
-    case Token::TokenType::NAME:
-    case Token::TokenType::STRING_LITERAL:
-    case Token::TokenType::BOOL_LITERAL:
-    case Token::TokenType::NUMERIC_LITERAL:
-    case Token::TokenType::THIS_LITERAL:
-    case Token::TokenType::COLOR_LITERAL:
-    case Token::TokenType::LIST_LITERAL:
-    case Token::TokenType::UNARY_OPERATOR:
-    case Token::TokenType::BINARY_OPERATOR:
-        return true;
-    default:
-        return false;
+        case Token::TokenType::NAME:
+        case Token::TokenType::STRING_LITERAL:
+        case Token::TokenType::BOOL_LITERAL:
+        case Token::TokenType::NUMERIC_LITERAL:
+        case Token::TokenType::THIS_LITERAL:
+        case Token::TokenType::COLOR_LITERAL:
+        case Token::TokenType::LIST_LITERAL:
+        case Token::TokenType::UNARY_OPERATOR:
+        case Token::TokenType::BINARY_OPERATOR:
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -354,16 +354,16 @@ bool Token::isFullPhrase(Token t) {
 
 bool Token::isPhrase(Token t) {
     switch(t.type) {
-    case Token::TokenType::CONST:
-    case Token::TokenType::KEYWORD:
-    case Token::TokenType::ASSIGNMENT:
-    case Token::TokenType::ARGUMENT_LIST:
-    case Token::TokenType::LIST_LITERAL:
-    case Token::TokenType::UNARY_OPERATOR:
-    case Token::TokenType::BINARY_OPERATOR:
-        return true;
-    default:
-        return false;
+        case Token::TokenType::CONST:
+        case Token::TokenType::KEYWORD:
+        case Token::TokenType::ASSIGNMENT:
+        case Token::TokenType::ARGUMENT_LIST:
+        case Token::TokenType::LIST_LITERAL:
+        case Token::TokenType::UNARY_OPERATOR:
+        case Token::TokenType::BINARY_OPERATOR:
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -376,34 +376,34 @@ Token::TokenType Token::getLiteral(std::string token, bool inLink=false) {
     if (token.front() == '"' && token.back() == '"')
         return Token::TokenType::STRING_LITERAL;
     switch (str2int(token.c_str())) {
-    case str2int("true"):
-    case str2int("false"):
-        return Token::TokenType::BOOL_LITERAL;
-    case str2int("this"):
-        return Token::TokenType::THIS_LITERAL;
-    case str2int("const"):
-        return Token::TokenType::CONST;
-    case str2int("create"):
-    case str2int("open"):
-    case str2int("file"):
-    case str2int("colorset"):
-    case str2int("foreach"):
-    case str2int("using"):
-    case str2int("export"):
-    #ifdef Ver0_1_0
-    case str2int("output"):
-    #endif
-        return Token::TokenType::KEYWORD;
-    case str2int("as"):
-    case str2int("in"):
-    case str2int("do"):
-    case str2int(","):
-        return Token::TokenType::FILLER;
-    case str2int("xor"):
-    case str2int("and"):
-    case str2int("or"):
-    case str2int("not"):
-        return Token::TokenType::UNKNOWN;
+        case str2int("true"):
+        case str2int("false"):
+            return Token::TokenType::BOOL_LITERAL;
+        case str2int("this"):
+            return Token::TokenType::THIS_LITERAL;
+        case str2int("const"):
+            return Token::TokenType::CONST;
+        case str2int("create"):
+        case str2int("open"):
+        case str2int("file"):
+        case str2int("colorset"):
+        case str2int("foreach"):
+        case str2int("using"):
+        case str2int("export"):
+        #ifdef Ver0_1_0
+        case str2int("output"):
+        #endif
+            return Token::TokenType::KEYWORD;
+        case str2int("as"):
+        case str2int("in"):
+        case str2int("do"):
+        case str2int(","):
+            return Token::TokenType::FILLER;
+        case str2int("xor"):
+        case str2int("and"):
+        case str2int("or"):
+        case str2int("not"):
+            return Token::TokenType::UNKNOWN;
     };
 
     bool alphanumeric = true, numeric = true, hex = true, first = true;

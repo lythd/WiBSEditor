@@ -8,9 +8,9 @@ PURPOSE:
 void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t, uint32_t>> tokens) {
     if (token.getType() != Token::TokenType::UNSET) destroy();
 
-    IntermediateNode *lastTopLevel = nullptr;
-    IntermediateNode *last = nullptr;
-    IntermediateNode *lastlast = last;
+    IntermediateNode *lastTopLevel = nullptr; // The last top level node
+    IntermediateNode *last = nullptr; // The last childless node so that it is the bottom, the place where we are adding from
+    IntermediateNode *lastlast = last; // The previous value in last, likely not a childless/bottom node
 
     for (std::tuple<std::string, uint32_t, uint32_t> tuple : tokens) {
         std::string value = std::get<0>(tuple);
@@ -41,7 +41,7 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
 
         // We have to go through some special cases before getting to the nice stuff
 
-        // The first token is always special
+        // The first token is always special, it just becomes the first token
         if (last == nullptr) {
             lastlast = nullptr;
             last = this;
@@ -219,19 +219,67 @@ void IntermediateNode::generateTree(std::vector<std::tuple<std::string, uint32_t
         }
 
         // Filler, closing brackets are special, remember we don't know which type of ')' we have (either unary or argument list, the binary one doesn't need closing cause its paired with argument list)
-        // TODO
+        else if (cToken.getType() == Token::TokenType::FILE_LITERAL) {
+            std::string match = "";
+            if (cToken.getValue() == ")") match = "(";
+            else if (cToken.getValue() == "]") match = "[";
+            if (match != "") {
+                IntermediateNode *lastp = last;
+                // Do not match with a binary '(', only matching with unary '(', arg list '(', or list literal '['
+                // Binary '(' will never need matching
+                // To avoid string literals and others we explicitly type unary, arg list, or list literal.
+                while (!(lastp->token.getValue() == match && (lastp->token.getType() == Token::TokenType::UNARY_OPERATOR || 
+                        lastp->token.getType() == Token::TokenType::ARGUMENT_LIST || lastp->token.getType() == Token::TokenType::LIST_LITERAL))) {
+                    lastp = lastp->getParent();
+                    if (lastp == nullptr) break; // Will go on to add it as a literal and cause a syntax error for a mismatched bracket.
+                }
+                // If we are here we have thus found the matching bracket and can close it and then continue
+                lastp->token.setValue(match + cToken.getValue());
+                // If it is not a unary operator then is some kind of list and we remove any potential trailing comma child
+                if (lastp->token.getType() != Token::TokenType::UNARY_OPERATOR) {
+                    if (auto *lc = (*lastp)[-1]; lc != nullptr && lc->token.getValue() == "," && lc->token.getType() == Token::TokenType::FILLER) {
+                        lc->disconnect();
+                        // Since it has a parent we can safely call disconnect(), a comma literal should never have a child, and we got it by it being the last child, so it shouldn't have any children or siblings anyway, but to be safe calling disconnect to avoid deleting them
+                        delete lc;
+                    }
+                }
+                continue;
+            }
+        }
 
-        // Add as child as last if it needs, if not keep going to the parent up
-        // TODO
-            // (temp reminder) : need special cases for adding to either kind of list,
-                    // for assignments, and probably some other stuff, so its not
-                    // purely general but more so depends on the last one than
-                    // this one
-            // (another) : though argument list and regular lists do make an initial ',' literal as a first child here, that can't be done above
-            // (another) : if something isn't acceptable (like const pretty much anywhere apart from after a do) then just skip it like it was complete I guess cause something was probably missing then
+        // Add as child as last if it needs and can be added, if not keep going to the parent up
+        IntermediateNode *lastp = last;
+        while (lastp != nullptr) {
+            if (!lastp->isComplete() && Token::doesAcceptInPosition(lastp->token, cToken, lastp->getNumberChildren())) {
+                // Make and add as a child
+                IntermediateNode *node = new IntermediateNode();
+                node->token = cToken;
+                lastp->addChild(node);
+                lastlast = last;
+                last = node;
+                // Argument lists and regular lists need an initial ',' filler as a first child
+                if (cToken.getType() == Token::TokenType::ARGUMENT_LIST || cToken.getType() == Token::TokenType::LIST_LITERAL) {
+                    IntermediateNode *node2 = new IntermediateNode();
+                    node2->token = Token(Token::TokenType::FILLER, ",", cToken.getLine(), cToken.getPos());
+                    last->addChild(node2);
+                    lastlast = last;
+                    last = node2;
+                }
+                break;
+            }
+            lastp = lastp->getParent();
+        }
 
-        // If you couldn't find any then make a sibling of the lasttoplevel you are there now
-        // TODO
+        // If you couldn't find any then make a sibling of the lasttoplevel
+        // This is also the only time we update lastTopLevel
+        if (lastp == nullptr) {
+            IntermediateNode *node = new IntermediateNode();
+            node->token = cToken;
+            lastTopLevel->addSibling(node);
+            lastlast = last;
+            last = node;
+            lastTopLevel = node;
+        }
     }
 }
 
@@ -244,15 +292,14 @@ std::vector<SyntaxError> getErrors() {
 bool IntermediateNode::isComplete() {
     uint32_t target = Token::getPhraseLength(token);
     uint32_t children = getNumberChildren();
-    IntermediateNode *child = children == 0 ? nullptr : getChild(children-1);
+    IntermediateNode *child = getChild(-1);
     if (target == (uint32_t)-1) {
         if (children == 0) return true; // No comma means it has been removed and you are done, just happens to be empty
         // For argument lists if the last child is a name then incomplete
         if (child->token.getType() == Token::TokenType::NAME &&
                 token.getType() == Token::TokenType::ARGUMENT_LIST) return false;
-        // If the last child is a filler ',' then not complete
-        if (child->token.getType() == Token::TokenType::FILLER && child->token.getValue() == ",")
-            return false; 
+        // If the value is either just a '(' or just a '[' it has not been matched with a closing bracket and so is not complete
+        if (token.getValue() == "(" || token.getValue() == "[") return false;
         // Recursiveness
         return child->isComplete();
     }
@@ -287,13 +334,23 @@ IntermediateNode * IntermediateNode::getParent() {
     return previous->getParent();
 }
 
-IntermediateNode * IntermediateNode::getChild(uint32_t index) {
+
+// Negative indices the size gets added, gives nullptr for anything too negative or too positive that it exceeds
+IntermediateNode * IntermediateNode::getChild(int32_t index) {
+    if (index < 0) {
+        index += getNumberChildren();
+        if (index < 0) return nullptr;
+    }
     if (index == 0) return firstChild;
     if (firstChild == nullptr) return nullptr;
     return firstChild->getSibling(index-1);
 }
 
-IntermediateNode * IntermediateNode::getSibling(uint32_t index) {
+// Its only purpose was to complete the getChild implementation
+// Gets sibling with relative index
+// Returns nullptr for negatives or if the index is too high
+IntermediateNode * IntermediateNode::getSibling(int32_t index) {
+    if (index < 0) return nullptr;
     if (index == 0) return nextSibling;
     if (nextSibling == nullptr) return nullptr;
     return nextSibling->getSibling(index-1);
@@ -309,7 +366,8 @@ uint32_t IntermediateNode::getNumberYoungerSiblings() {
     return 1 + nextSibling->getNumberYoungerSiblings();
 }
 
-IntermediateNode * IntermediateNode::operator[](uint32_t index) {
+// Just calls getChild(), look there for details
+IntermediateNode * IntermediateNode::operator[](int32_t index) {
     return getChild(index);
 }
 
@@ -317,12 +375,81 @@ IntermediateNode::~IntermediateNode() {
     destroy();
 }
 
+// Dangerous since it can leave stranded bits of the tree
+void IntermediateNode::disconnect() {
+    // If there is a previous then it won't leave anything stranded it will connect
+    if (previous != nullptr) {
+        if (hasParent) {
+            // First child replaces it
+            if (firstChild != nullptr) {
+                firstChild->previous = previous;
+                previous->firstChild = firstChild;
+                // firstChild->hasParent would already be set to true
+                // If there is a next sibling it will become a sibling of the child, still stranded though, this will likely break any syntax but if this is happening
+                        // syntax is already broken, and we are preventing memory leaks.
+                if (nextSibling != nullptr) firstChild->addSibling(nextSibling);
+            }
+            // Next sibling replaces it
+            else if (nextSibling != nullptr) {
+                nextSibling->previous = previous;
+                previous->firstChild = nextSibling;
+                nextSibling->hasParent = true;
+            }
+            // Otherwise simple disconnect
+            else previous->firstChild = nullptr;
+        } else {
+            // First child replaces it
+            if (firstChild != nullptr) {
+                firstChild->previous = previous;
+                previous->nextSibling = firstChild;
+                firstChild->hasParent = false;
+                // If there is a next sibling it will become a sibling of the child, still stranded though, this will likely break any syntax but if this is happening
+                        // syntax is already broken, and we are preventing memory leaks.
+                if (nextSibling != nullptr) firstChild->addSibling(nextSibling);
+            }
+            // Next sibling replaces it
+            else if (nextSibling != nullptr) {
+                nextSibling->previous = previous;
+                previous->nextSibling = nextSibling;
+                // nextSibling->hasParent would already be set to false
+            }
+            // Otherwise simple disconnect
+            else previous->nextSibling = nullptr;
+        }
+    }
+
+    // No parent means any children or siblings become stranded, bad!
+    else if (firstChild != nullptr) {
+        // If there is a next sibling it will become a sibling of the child, still stranded though, this will likely break any syntax but if this is happening
+                // syntax is already broken, and we are preventing memory leaks.
+        if (nextSibling != nullptr) firstChild->addSibling(nextSibling);
+        firstChild->hasParent = false;
+        firstChild->previous = nullptr;
+    }
+
+    // Just the next sibling, which will become stranded, bad!
+    else if (nextSibling != nullptr) nextSibling->previous = nullptr;
+
+    token = Token();
+    previous = nullptr;
+    firstChild = nullptr;
+    nextSibling = nullptr;
+    hasParent = false;
+}
+
+// Deletes younger siblings and children too to prevent fragmentation and also because you often want to do that
 void IntermediateNode::destroy() {
     token = Token();
+    if (previous != nullptr) {
+        if (hasParent) previous->firstChild = nullptr;
+        else previous->nextSibling = nullptr;
+        previous = nullptr;
+    }
     hasParent = false;
-    previous = nullptr;
     if (firstChild != nullptr) firstChild->destroy();
     if (nextSibling != nullptr) nextSibling->destroy();
     delete firstChild;
     delete nextSibling;
+    firstChild = nullptr;
+    nextSibling = nullptr;
 }
