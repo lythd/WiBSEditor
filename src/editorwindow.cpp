@@ -23,6 +23,7 @@ PURPOSE:
 #include <QHeaderView>
 #include <QScrollBar>
 #include <cmath>
+#include <iostream>
 
 EditorWindow::EditorWindow() {
     // Main window setup
@@ -209,95 +210,8 @@ void EditorWindow::changeTheme() {
 
 #ifdef DEBUG
 void EditorWindow::previewCompilation() {
-    // Custom QWidget to represent each node, I was trying to draw lines which is the whole purpose this class exists but I couldn't get them working properly and it aint that important
-    class TreeLabel : public QWidget {
-    public:
-        TreeLabel(const QString &text, QWidget *parent = nullptr)
-            : QWidget(parent), label(new QLabel(text, this)) {
-            label->setAlignment(Qt::AlignCenter);
-            setFixedSize(label->sizeHint());
-        }
-
-        #ifdef DEBUG_DRAWLINES
-        void setParentPositionLC(const TreeLabel& parent) {
-            parentStart = label->rect().topRight();
-            parentEnd = parent.label->rect().bottomLeft();
-            update();
-        }
-
-        void setParentPositionRC(const TreeLabel& parent) {
-            parentStart = label->rect().topLeft();
-            parentEnd = parent.label->rect().bottomRight();
-            update();
-        }
-        #endif
-
-    protected:
-        #ifdef DEBUG_DRAWLINES
-        void paintEvent(QPaintEvent *) override {
-            QPainter painter(this);
-            painter.setRenderHint(QPainter::Antialiasing);
-
-            // Draw line to parent
-            if (!parentStart.isNull() && !parentEnd.isNull()) {
-                painter.setPen(QPen(Qt::black, 2));
-                painter.drawLine(parentStart, parentEnd);
-            }
-        }
-        #endif
-
-        QSize sizeHint() const override {
-            return label->sizeHint();
-        }
-
-    private:
-        QLabel *label;
-        #ifdef DEBUG_DRAWLINES
-        QPoint parentStart, parentEnd;
-        #endif
-    };
-
-    // Parse
-    TokenParser parser;
-    auto toks = parser.parse(textEdit->toPlainText().toStdString());
-    IntermediateNode *inter = new IntermediateNode();
-    inter->generateTree(toks);
-    while (inter->getParent() != nullptr) inter = inter->getParent();
-    std::vector<std::string> tokens;
-    inter->getAsVector(tokens);
-
-    // Create a popup window
-    QDialog *popup = new QDialog(nullptr);
-    popup->setWindowTitle("Binary Tree Representation of Tokens");
-    QGridLayout *layout = new QGridLayout(popup);
-
-    // Display the tokens in a binary tree form
-    std::vector<TreeLabel*> treeLabels;
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        int maxDepth = BinaryTreeHelper::getDepth(tokens.size() - 1);
-        int depth = BinaryTreeHelper::getDepth(i);
-        int column = BinaryTreeHelper::getColumn(i, depth);
-        int rowColumns = BinaryTreeHelper::getMaxColumnsForDepth(depth);
-        int maxColumns = BinaryTreeHelper::getMaxColumnsForDepth(maxDepth+1);
-        
-        // Calculate column by centering the tokens within the max column space for the depth
-        int baseCol = (int) std::round(((double)column+0.5)/(double)rowColumns * maxColumns);
-
-        // Create a custom widget for the token
-        TreeLabel *treeLabel = new TreeLabel(QString::fromStdString(tokens[i]));
-        treeLabels.push_back(treeLabel);
-        layout->addWidget(treeLabel, depth, baseCol);
-
-        // Draw line to parent based on either being right child or left child
-        #ifdef DEBUG_DRAWLINES
-        if(i%2==1) treeLabel->setParentPositionLC(*(treeLabels[i/2]));
-        else if(i>0) treeLabel->setParentPositionRC(*(treeLabels[i/2-1]));
-        #endif
-    }
-    treeLabels.clear();
-
-    popup->setLayout(layout);
-    popup->exec();
+    BuilderManager b;
+    std::cout << b.build("--ping VERSION") << "\n";
 }
 #endif
 

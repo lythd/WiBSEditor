@@ -6,10 +6,9 @@ PURPOSE:
 #define EDITORWINDOW_H
 
 #include "defines.h"
-#include "intermediatenode.h"
 #include "syntaxhighlighter.h"
 #include "binarytreehelper.hpp"
-#include "tokenparser.h"
+#include "buildermanager.h"
 #include "syntaxhighlighter.h"
 #include <QMainWindow>
 #include <QTextEdit>

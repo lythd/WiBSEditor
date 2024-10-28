@@ -4,22 +4,19 @@ CONFIG += c++20
 QT += widgets
 
 # Sources
-SOURCES += main.cpp \
-           editorwindow.cpp \
-           syntaxhighlighter.cpp \
-           tokenparser.cpp \
-           intermediatenode.cpp
+SOURCES += src/main.cpp \
+           src/editorwindow.cpp \
+           src/syntaxhighlighter.cpp \
+           src/buildermanager.cpp
 
 # Headers
-HEADERS += editorwindow.h \
-           syntaxhighlighter.h \
-           tokenparser.h \
-           intermediatenode.h \
-           binarytreehelper.hpp \
-           token.hpp \
-           syntaxerror.hpp \
-           notimplementedexception.hpp
+HEADERS += src/editorwindow.h \
+           src/syntaxhighlighter.h \
+           src/buildermanager.h \
+           src/binarytreehelper.hpp \
+           src/syntaxerror.hpp \
+           src/notimplementedexception.hpp
 
 RESOURCES += resources.qrc
 
-TARGET = wbsedit
+TARGET = wibsedit
