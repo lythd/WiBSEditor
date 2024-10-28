@@ -16,6 +16,7 @@
                      | "export" <value-expression>
                      | "output" <value-expression>
                      | <appliedarg>
+                     | <bracket-expression>
                      | <list>
                      | <string>
                      | <explicit-file>
@@ -23,10 +24,12 @@
                      | <numeric>
                      | <color>
 
-<list> ::= "[" <value-expression> { "," <value-expression> } [ "," ] "]"
+<list> ::= "[" { <value-expression> "," } [ <value-expression> ] "]"
 
-<appliedarg> ::= (<htmlpart> | <name>) <arglist>
-<arglist> ::= "(" <assignment> { "," <assignment> } [ "," ] ")"
+<appliedarg> ::= (<htmlpart> | <name> | <bracket-expression>) <arglist>
+<arglist> ::= "(" { <assignment> "," } [ <assignment> ] ")"
+
+<bracket-expression> ::= "(" <value-expression> ")"
 
 <numeric> ::= <digit> { <digit> } [ "." <digit> { <digit> } ]
 
