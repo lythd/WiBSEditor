@@ -5,7 +5,10 @@ PURPOSE:
 #ifndef EDITORWINDOW_H
 #define EDITORWINDOW_H
 
-#include "editorwindow.h"
+#include "defines.h"
+#include "intermediatenode.h"
+#include "syntaxhighlighter.h"
+#include "binarytreehelper.hpp"
 #include "tokenparser.h"
 #include "syntaxhighlighter.h"
 #include <QMainWindow>

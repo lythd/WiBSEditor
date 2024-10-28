@@ -5,6 +5,7 @@ PURPOSE:
 #ifndef SYNTAXHIGHLIGHTER_H
 #define SYNTAXHIGHLIGHTER_H
 
+#include "defines.h"
 #include <QSyntaxHighlighter>
 #include <QTextCharFormat>
 #include <QStringList>

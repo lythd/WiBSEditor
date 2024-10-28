@@ -1,0 +1,63 @@
+<program> ::= <statement>*
+
+<statement> ::= "const" <assignment>
+              | <value-expression>
+
+<assignment> ::= <name> "=" <value-expression>
+
+<value-expression> ::= <binary-expression>
+                     | <unary-expression>
+                     | "create" (<htmlpart> | <value-expression>)
+                     | "open" (<file> | <explicit-file>)
+                     | "file" (<file> | <explicit-file>)
+                     | "colorset" <list> <list> <list>
+                     | "foreach" <name> "in" <name> "do" <statement>
+                     | "using" <name> "as" <name> "do" <statement>
+                     | "export" <value-expression>
+                     | "output" <value-expression>
+                     | <appliedarg>
+                     | <list>
+                     | <string>
+                     | <explicit-file>
+                     | <name>
+                     | <numeric>
+                     | <color>
+
+<list> ::= "[" <value-expression> { "," <value-expression> } [ "," ] "]"
+
+<appliedarg> ::= (<htmlpart> | <name>) <arglist>
+<arglist> ::= "(" <assignment> { "," <assignment> } [ "," ] ")"
+
+<numeric> ::= <digit> { <digit> } [ "." <digit> { <digit> } ]
+
+<color> ::= "#" ( <hex-digit> <hex-digit> <hex-digit> | <hex-digit> <hex-digit> <hex-digit> <hex-digit> | <hex-digit> <hex-digit> <hex-digit> <hex-digit> <hex-digit> <hex-digit> | <hex-digit> <hex-digit> <hex-digit> <hex-digit> <hex-digit> <hex-digit> <hex-digit> <hex-digit> )
+
+<name> ::= (<letter> | "_") { <letter> | <digit> | "_" }
+
+<string> ::= "\"" <character>* "\""
+
+<explicit-file> ::= "/" <file>
+<file> ::= <file-part> { "/" <file-part> }
+<file-part> ::= { <letter> | <digit> | "_" | "." }
+
+<htmlpart> ::= <name>
+
+<binary-operator> ::= "+" | "-" | "*" | "/" | "//" | "**"
+                    | ">" | "<" | ">=" | "≥" | "<=" | "≤" | "==" | "=" | "≈" | "~=" | "≠" | "!="
+                    | "&" | "&&" | "and" | "|" | "||" | "or" | "^" | "^^"
+
+<binary-expression> ::= <value-expression> <binary-operator> <value-expression>
+
+<unary-operator> ::= "+" | "-" | "~" | "!" | "not"
+
+<unary-expression> ::= <unary-operator> <value-expression>
+
+<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<hex-digit> ::= <digit> | "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F"
+<letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+
+<character> ::= <any_character_except_quote> | <escaped_quote> | <new_line> | <tab>
+<escaped_quote> ::= "\\" "\""
+<new_line> ::= "\\" "n"
+<tab> ::= "\\" "t"
+<any_character_except_quote> ::= ? all ASCII characters ? - "\"" - "\\"
